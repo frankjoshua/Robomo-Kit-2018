@@ -7,24 +7,14 @@
 //Pins for TB6612 motor driver
 enum pins
 {
-  APWM = 2,
+  APWM = 5,
   AIN_2 = 4,
   AIN_1 = 0,
-  //STANDBY = 2,//Not used
+  STANDBY = 2,
   BIN_1 = 14,
   BIN_2 = 12,
   BPWM = 13
 };
-
-// defines pins numbers
-const int trigPin = 15;
-const int echoPin = 5;
-
-// defines variables
-long duration;
-int distance;
-long lastPing = 0;
-long latch = 0;
 
 ESP8266WebServer server(80);   //Web server object. Will be listening in port 80 (default for HTTP)
 
@@ -115,28 +105,10 @@ void motorHandler(){
   driveMotors(server.arg("x").toFloat(), server.arg("z").toFloat());
   //Just echo back inputs and send a 200 OK
   server.send(200, "text/plain", server.arg("x") + " " + server.arg("z"));  
-  latch = millis();
 }
 
 void rootPageHandler(){
   server.send(200, "text/plain", webPage);
-}
-
-void readDistance(){
-  // Clears the trigPin
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(echoPin, HIGH);
-  // Calculating the distance
-  distance= duration*0.034/2;
-  // Prints the distance on the Serial Monitor
-  Serial.print("Distance: ");
-  Serial.println(distance);
 }
 
 void setup()
@@ -151,8 +123,8 @@ void setup()
   pinMode(BIN_2, OUTPUT);
   pinMode(APWM, OUTPUT);
   pinMode(BPWM, OUTPUT);
-  //pinMode(STANDBY, OUTPUT);
-  //digitalWrite(STANDBY, HIGH);
+  pinMode(STANDBY, OUTPUT);
+  digitalWrite(STANDBY, HIGH);
   Serial.println("Stopping motors...");
   delay(100);
   //Make sure motors are stopped
@@ -171,35 +143,9 @@ void setup()
   server.on("/", []() { server.send ( 200, "text/html", webPage );  });
   server.on("/drive", motorHandler);
   server.begin();
-
-  
-  pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
-  pinMode(echoPin, INPUT); // Sets the echoPin as an Input
-
 }
 
 void loop() {
   //Listen on port 80 for web api
   server.handleClient();
-
-  if(millis() > lastPing + 50){
-    lastPing = millis();
-    readDistance();
-  }
-
-  if(millis() > latch + 1000){
-    if(distance > 200){
-      latch = millis();
-      driveMotors(-0.4, -0.3);
-    } else if(distance > 30){
-      driveMotors(0.6, 0);
-    } else if(distance > 8) {
-      driveMotors(0, 0.4);
-      latch = millis();
-    } else {
-      latch = millis();
-      driveMotors(-0.4, 0.3);
-    }
-  }
-  
 }
